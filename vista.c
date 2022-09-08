@@ -12,7 +12,7 @@ cargando el mismo. El buffer DEBE tener la siguiente información:
 ○ Md5 del archivo.
 ○ ID del esclavo que lo procesó.
 */
-#include "view.h"
+#include "vista.h"
 
 int main(int argc, char const *argv[]){
 
