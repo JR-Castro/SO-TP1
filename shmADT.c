@@ -10,7 +10,7 @@ char shmemName[STRINGSIZE];
 
 static int openSemaphore();
 
-static int closeSemaphore();
+static void getSemaphoreName(char semname[STRINGSIZE]);
 
 int createShm(const char name[STRINGSIZE]){
     if (shmem != NULL)
@@ -49,23 +49,51 @@ int connectShm(const char name[STRINGSIZE]){
     shmem = (char *) mapped;
     strncpy(shmemName, name, STRINGSIZE);
 
-    return 0;
+    return openSemaphore();
 }
 
-int readerDisconnect(){
-    return munmap((void*)shmem, STRINGAMOUNT * STRINGSIZE) ? SHMADT_ERROR : 0;
+int readerDisconnect() {
+    if (munmap((void *) shmem, STRINGAMOUNT * STRINGSIZE)) {
+        return SHMADT_ERROR;
+    }
+    return sem_close(semaphore);
 }
 
 int writerDelete(){
     if (munmap((void*)shmem, STRINGAMOUNT * STRINGSIZE))
         return SHMADT_ERROR;
-    return shm_unlink(shmemName) ? SHMADT_ERROR : 0;
+    if (shm_unlink(shmemName))
+        return SHMADT_ERROR;
+    if (sem_close(semaphore))
+        return SHMADT_ERROR;
+    char semname[STRINGSIZE];
+    getSemaphoreName(semname);
+    return sem_unlink(semname);
 }
 
-int openSemaphore(){
+int shmwrite(const char s[STRINGSIZE]){
+    if (iterator < STRINGAMOUNT) {
+        strncpy(&(shmem[iterator * STRINGSIZE]), s, STRINGSIZE);
+        iterator++;
+        return (sem_post(semaphore)) ? -1 : STRINGAMOUNT- (int)iterator;
+    }
+    return 0;
+}
+
+int shmread(char s[STRINGSIZE]){
+    if (iterator < STRINGAMOUNT) {
+        if (sem_wait(semaphore))
+            return -1;
+        strncpy(s, &(shmem[iterator * STRINGSIZE]), STRINGSIZE);
+        iterator++;
+        return STRINGAMOUNT- (int) iterator;
+    }
+    return 0;
+}
+
+static int openSemaphore(){
     char semname[STRINGSIZE];
-    strncpy(semname, shmemName, STRINGSIZE);
-    strncat(semname, "-sem", STRINGSIZE);
+    getSemaphoreName(semname);
     //  Both reader and writer use the same function, since if the semaphore already exists
     //  then mode and value are ignored
     sem_t * sem = sem_open(semname, O_CREAT, S_IRUSR | S_IWUSR, 0);
@@ -74,3 +102,9 @@ int openSemaphore(){
     semaphore = sem;
     return 0;
 }
+
+static void getSemaphoreName(char semname[STRINGSIZE]){
+    strncpy(semname, shmemName, STRINGSIZE);
+    strncat(semname, "-sem", STRINGSIZE);
+}
+
