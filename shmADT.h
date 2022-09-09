@@ -25,20 +25,44 @@
 // Link with -lrt for shmem
 // Link with -pthread for semaphore
 
+/*
+ * The writer process creates the shared memory
+ * Returns:
+ *      0 on success
+ *      -1 on failure, with errno set
+ */
 int createShm(const char name[STRINGSIZE]);
 
+/*
+ * The reader process connects to the shared memory
+ * Returns 0 on success, -1 on error with errno set
+ */
 int connectShm(const char name[STRINGSIZE]);
 
-// Writes to the shared memory
-// Returns the amount of space left for strings of STRINGSIZE or -1 if an error happened with the semaphore.
+/*
+ * Writes to the shared memory
+ * Returns the amount of space left for strings of STRINGSIZE
+ *  or -1 if an error happened with the semaphore, and errno is set
+*/
 int shmwrite(const char s[STRINGSIZE]);
 
-// Reads from the shared memory
-// Returns the amount of space left for strings of STRINGSIZE or -1 if something happened with se semaphore.
+/*
+ * Reads from the shared memory
+ * Returns the amount of space left for strings of STRINGSIZE
+ *  or -1 if something happened with se semaphore and errno is set
+*/
 int shmread(char s[STRINGSIZE]);
 
+/*
+ * Reader disconnects from the shared memory
+ * Returns 0 on success, -1 on error and errno is set
+ */
 int readerDisconnect();
 
+/*
+ * The writer process deletes the shared memory
+ * Returns 0 on success, -1 on error and errno is set
+ */
 int writerDelete();
 
 #endif //SO_TP1_SHMADT_H

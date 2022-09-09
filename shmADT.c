@@ -1,6 +1,5 @@
 // This is a personal academic project. Dear PVS-Studio, please check it.
-// PVS-Studio Static Code Analyzer for C, C++, C#, and Java: http://www.viva64.com
-
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "shmADT.h"
 
 char *shmem = NULL;
@@ -104,7 +103,8 @@ static int openSemaphore(){
 }
 
 static void getSemaphoreName(char semname[STRINGSIZE]){
-    strncpy(semname, shmemName, STRINGSIZE);
-    strncat(semname, "-sem", STRINGSIZE);
+    strncpy(semname, shmemName, STRINGSIZE-1);
+    size_t size = strlen(semname);
+    strncat(semname, "-sem", STRINGSIZE-1-size);
 }
 
