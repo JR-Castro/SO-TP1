@@ -5,7 +5,9 @@
 #ifndef SO_TP1_SHMADT_H
 #define SO_TP1_SHMADT_H
 
-#define _BSD_SOURCE // ftruncate
+#ifndef _BSD_SOURCE // ftruncate
+#define _BSD_SOURCE
+#endif
 
 #include <sys/mman.h>
 #include <unistd.h>
