@@ -48,10 +48,10 @@ int shmwrite(const char s[STRINGSIZE]);
 
 /*
  * Reads from the shared memory
- * Returns the amount of space left for strings of STRINGSIZE
- *  or -1 if something happened with se semaphore and errno is set
+ * Returns a pointer to the string in the shared memory (DO NOT MODIFY), NULL if there was nothing to read
+ * or (char*)-1 if there was an error.
 */
-int shmread(char s[STRINGSIZE]);
+char *shmread();
 
 /*
  * Reader disconnects from the shared memory
