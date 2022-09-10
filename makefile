@@ -7,7 +7,7 @@ md5: aplicacion.c
 	${CC} ${FLAGS} aplicacion.c shmADT.c -o md5 -lrt -pthread
 
 vista: vista.c
-	${CC} ${FLAGS} vista.c -o vista
+	${CC} ${FLAGS} vista.c shmADT.c -o vista -lrt -pthread
 
 slave: esclavo.c
 	${CC} ${FLAGS} esclavo.c -o slave
