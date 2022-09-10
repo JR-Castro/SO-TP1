@@ -1,40 +1,47 @@
 // This is a personal academic project. Dear PVS-Studio, please check it.
-// PVS-Studio Static Code Analyzer for C, C++, C#, and Java: http://www.viva64.com
-#include "vista.h"
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
+#include "shmADT.h"
+#include <stdio.h>
+#include <stdlib.h>
 
-int main(int argc, char const *argv[]){
+void errorHandler(const char *errorMsg);
 
-    char buffer[MAX_MEM_CHARS] = {0};
-    
-    if( argc == 1 ){
-        if(read(STDIN, buffer, MAX_MEM_CHARS) == ERROR ) {
-            //puedo usar scanf con barra
-            errorHandler("Read failed");
-        }
+void disconnectShmOnExit() {
+    if (readerDisconnect())
+        perror("disconnectShmOnExit");
+}
+
+int main(int argc, char const *argv[]) {
+
+    char shmName[STRINGSIZE] = {0};
+
+    if (argc == 1) {
+        if (fgets(shmName, STRINGSIZE, stdin) == NULL)
+            errorHandler("fgets");
     } else {
-        fprintf(stderr,"%s\n","Incorrect amount of arguments");
-        return -1;
+        strncpy(shmName, argv[1], STRINGSIZE);
     }
- 
-    int connect = connecshr(buffer)
 
-    if(connect != SHMADT_ERROR){
-        while(shmread() != null ){
-            printf("%s \n",shmread())
+    if (connectShm(shmName)) {
+        errorHandler("connectShm");
+    }
+    if (atexit(disconnectShmOnExit))
+        errorHandler("at exit");
+
+    char *result;
+    do {
+        result = shmread();
+        if (result == (char *) -1)
+            errorHandler("shmread");
+        if (result != NULL) {
+            puts(result);
         }
-    }
-    else
-        return -1;
+    } while (result != NULL);
 
-    readerDisconnect(); 
-
-    return 0;
+    exit(EXIT_SUCCESS);
 }
 
 void errorHandler(const char *errorMsg) {
-    char finalMsg[ERROR_MSG] = {0};
-    strcat(finalMsg,errorMsg);
-    strcat(finalMsg,"\n");
-    perror(finalMsg);
+    perror(errorMsg);
     exit(EXIT_FAILURE);
 }
