@@ -79,15 +79,15 @@ int shmwrite(const char s[STRINGSIZE]) {
     return 0;
 }
 
-int shmread(char s[STRINGSIZE]) {
+char *shmread() {
     if (iterator < STRINGAMOUNT) {
         if (sem_wait(semaphore))
-            return -1;
-        strncpy(s, &(shmem[iterator * STRINGSIZE]), STRINGSIZE);
+            return (char*)-1;
+        char * ans = &(shmem[iterator * STRINGSIZE]);
         iterator++;
-        return STRINGAMOUNT - iterator;
+        return ans;
     }
-    return 0;
+    return NULL;
 }
 
 static int openSemaphore() {
