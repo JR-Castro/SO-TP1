@@ -14,8 +14,13 @@
 #include "shmADT.h"
 
 #define SLAVELIMIT 5
+//  Path to the slaves binary
 #define SLAVEPATH "./slave"
+//  Path to the results file
 #define RESULTPATH "./resultado"
+//  Amount of files sent initially to each slave
+//  If we send more than 1 file at the start, we should change the size of the buffer used on the read in readAndSendFileToSlave()
+#define INITIALFILESCOUNT 1
 
 int SLAVE_IN[SLAVELIMIT];   //  fd for slave inputs -> where the paths are sent to be processed by the slaves
 
@@ -54,11 +59,11 @@ int sendFileToSlave(const char *path, unsigned int slavenum){
 }
 
 /*  Returns the biggest file descriptor numbre in the array */
-int getMaxFd(int fd[SLAVELIMIT]){
-    int max = fd[0];
+int getMaxFd(int fds[SLAVELIMIT]){
+    int max = fds[0];
     for (int i = 1; i < SLAVELIMIT; ++i) {
-        if (fd[i] > max)
-            max = fd[i];
+        if (fds[i] > max)
+            max = fds[i];
     }
     return max;
 }
@@ -69,11 +74,43 @@ void setFd(fd_set *fdSet, int fds[SLAVELIMIT]){
     }
 }
 
+//  Reads a slave's output and prints it to the results file and sends to the shared memory
+void readAndSendFileToSlave(int *pathIterator, int *filesReceived, int *filesSent, int slaveNum, int resultFd, glob_t *globbuf){
+    char result[STRINGSIZE];
+    long sizeRead;
+    int ret = 1;
+    /*  Read the result from the slave.
+     *  If we send more than one file in the initial distribution, then we should use a bigger buffer to
+     *  make sure all their results can be stored at once.
+     */
+    sizeRead = read(SLAVE_OUT[slaveNum], result, STRINGSIZE-1);
+    if (sizeRead == -1)
+        errorHandler("read from slave pipe");
+    (*filesReceived)++;
+
+    // End the string.
+    if (sizeRead >= 0)
+        result[sizeRead] = '\0';
+
+    if (write(resultFd, result, strlen(result)))
+        errorHandler("write to results file");
+
+    shmwrite(result);
+
+    while (ret && *pathIterator < globbuf->gl_pathc){
+        ret = sendFileToSlave(globbuf->gl_pathv[*pathIterator], slaveNum);
+        (*pathIterator)++;
+        if (ret)
+            (*filesSent)++;
+    }
+}
+
 void manageSlaves(glob_t * globbuf, int resultFd){
     unsigned int slaveIterator = 0;
     int pathIterator, filesSent = 0, filesReceived = 0;
+
     // Send initial files for slaves
-    for (pathIterator = 0; pathIterator < globbuf->gl_pathc && pathIterator < SLAVELIMIT * 2; ++pathIterator) {
+    for (pathIterator = 0; pathIterator < globbuf->gl_pathc && pathIterator < SLAVELIMIT * INITIALFILESCOUNT; ++pathIterator) {
         int ret = 1;
         while (ret && pathIterator < globbuf->gl_pathc){
             ret = sendFileToSlave(globbuf->gl_pathv[pathIterator], slaveIterator);
@@ -93,32 +130,8 @@ void manageSlaves(glob_t * globbuf, int resultFd){
             errorHandler("select");
 
         for (int i = 0; i < SLAVELIMIT; ++i) {
-            char result[STRINGSIZE];
-            long sizeRead;
-            int ret = 1;
-
             if (FD_ISSET(SLAVE_OUT[i], &fdSet)){
-                // Read the result.
-                sizeRead = read(SLAVE_OUT[i], result, STRINGSIZE-1);
-                if (sizeRead == -1)
-                    errorHandler("read from slave pipe");
-                filesReceived++;
-
-                // End the string.
-                if (sizeRead >= 0)
-                    result[sizeRead] = '\0';
-
-                if (write(resultFd, result, strlen(result)))
-                    errorHandler("write to results file");
-
-                shmwrite(result);
-
-                while (ret && pathIterator < globbuf->gl_pathc){
-                    ret = sendFileToSlave(globbuf->gl_pathv[pathIterator], i);
-                    pathIterator++;
-                    if (ret)
-                        filesSent++;
-                }
+                readAndSendFileToSlave(&pathIterator, &filesReceived, &filesSent, i, resultFd, globbuf);
             }
         }
     }
@@ -149,7 +162,7 @@ int main(int argc, char * argv[]){
 
     manageSlaves(&globbuf, result_fd);
 
-    //  Once all files are distributed between slaves, close the pipes to signal EOF.
+    //  Once all files are processed, close the pipes to signal EOF.
     errno = 0;
     for (int i = 0; i < SLAVELIMIT; ++i) {
         if (close(SLAVE_IN[i]))
