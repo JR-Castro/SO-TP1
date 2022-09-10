@@ -11,7 +11,7 @@ static int openSemaphore();
 
 static void getSemaphoreName(char semname[STRINGSIZE]);
 
-int createShm(const char name[STRINGSIZE]){
+int createShm(const char name[STRINGSIZE]) {
     if (shmem != NULL)
         return SHMADT_ERROR;
     int fd = shm_open(name, O_RDWR | O_CREAT | O_TRUNC, S_IWUSR | S_IRUSR);
@@ -31,7 +31,7 @@ int createShm(const char name[STRINGSIZE]){
     return openSemaphore();
 }
 
-int connectShm(const char name[STRINGSIZE]){
+int connectShm(const char name[STRINGSIZE]) {
     if (shmem != NULL)
         return SHMADT_ERROR;
     int fd = shm_open(name, O_RDONLY, 0);
@@ -58,8 +58,8 @@ int readerDisconnect() {
     return sem_close(semaphore);
 }
 
-int writerDelete(){
-    if (munmap((void*)shmem, STRINGAMOUNT * STRINGSIZE))
+int writerDelete() {
+    if (munmap((void *) shmem, STRINGAMOUNT * STRINGSIZE))
         return SHMADT_ERROR;
     if (shm_unlink(shmemName))
         return SHMADT_ERROR;
@@ -70,41 +70,41 @@ int writerDelete(){
     return sem_unlink(semname);
 }
 
-int shmwrite(const char s[STRINGSIZE]){
+int shmwrite(const char s[STRINGSIZE]) {
     if (iterator < STRINGAMOUNT) {
         strncpy(&(shmem[iterator * STRINGSIZE]), s, STRINGSIZE);
         iterator++;
-        return (sem_post(semaphore)) ? -1 : STRINGAMOUNT- (int)iterator;
+        return (sem_post(semaphore)) ? -1 : STRINGAMOUNT - (int) iterator;
     }
     return 0;
 }
 
-int shmread(char s[STRINGSIZE]){
+int shmread(char s[STRINGSIZE]) {
     if (iterator < STRINGAMOUNT) {
         if (sem_wait(semaphore))
             return -1;
         strncpy(s, &(shmem[iterator * STRINGSIZE]), STRINGSIZE);
         iterator++;
-        return STRINGAMOUNT- (int) iterator;
+        return STRINGAMOUNT - iterator;
     }
     return 0;
 }
 
-static int openSemaphore(){
+static int openSemaphore() {
     char semname[STRINGSIZE];
     getSemaphoreName(semname);
     //  Both reader and writer use the same function, since if the semaphore already exists
     //  then mode and value are ignored
-    sem_t * sem = sem_open(semname, O_CREAT, S_IRUSR | S_IWUSR, 0);
+    sem_t *sem = sem_open(semname, O_CREAT, S_IRUSR | S_IWUSR, 0);
     if (sem == SEM_FAILED)
         return SHMADT_ERROR;
     semaphore = sem;
     return 0;
 }
 
-static void getSemaphoreName(char semname[STRINGSIZE]){
-    strncpy(semname, shmemName, STRINGSIZE-1);
+static void getSemaphoreName(char semname[STRINGSIZE]) {
+    strncpy(semname, shmemName, STRINGSIZE - 1);
     size_t size = strlen(semname);
-    strncat(semname, "-sem", STRINGSIZE-1-size);
+    strncat(semname, "-sem", STRINGSIZE - 1 - size);
 }
 

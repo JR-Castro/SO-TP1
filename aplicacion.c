@@ -26,7 +26,7 @@ int SLAVE_IN[SLAVELIMIT];   //  fd for slave inputs -> where the paths are sent 
 int SLAVE_OUT[SLAVELIMIT];  //  fd for slave outputs -> where the slaves response is sent.
 glob_t globbuf;             // Structure for glob function (match paths)
 
-void getFilePaths(int amount, char * paths[]);
+void getFilePaths(int amount, char *paths[]);
 
 void createSlavePipes(int fd[2]);
 
@@ -36,13 +36,13 @@ void createSlaves();
 
 void startShm();
 
-void errorHandler(const char * msg);
+void errorHandler(const char *msg);
 
 /*
  *  Returns 0 if write was completed correctly.
  *  Retruns 1 if path was not a file.
  */
-int sendFileToSlave(const char *path, unsigned int slavenum){
+int sendFileToSlave(const char *path, unsigned int slavenum) {
     struct stat statbuffer;
     errno = 0;
     if (stat(path, &statbuffer) == -1)
@@ -59,7 +59,7 @@ int sendFileToSlave(const char *path, unsigned int slavenum){
 }
 
 /*  Returns the biggest file descriptor numbre in the array */
-int getMaxFd(int fds[SLAVELIMIT]){
+int getMaxFd(int fds[SLAVELIMIT]) {
     int max = fds[0];
     for (int i = 1; i < SLAVELIMIT; ++i) {
         if (fds[i] > max)
@@ -68,14 +68,14 @@ int getMaxFd(int fds[SLAVELIMIT]){
     return max;
 }
 
-void setFd(fd_set *fdSet, int fds[SLAVELIMIT]){
+void setFd(fd_set *fdSet, int fds[SLAVELIMIT]) {
     for (int i = 0; i < SLAVELIMIT; ++i) {
         FD_SET(fds[i], fdSet);
     }
 }
 
 //  Reads a slave's output and prints it to the results file and sends to the shared memory
-void readAndSendFileToSlave(int *pathIterator, int *filesReceived, int *filesSent, int slaveNum, int resultFd){
+void readAndSendFileToSlave(int *pathIterator, int *filesReceived, int *filesSent, int slaveNum, int resultFd) {
     char result[STRINGSIZE];
     long sizeRead;
     int ret = 1;
@@ -83,7 +83,7 @@ void readAndSendFileToSlave(int *pathIterator, int *filesReceived, int *filesSen
      *  If we send more than one file in the initial distribution, then we should use a bigger buffer to
      *  make sure all their results can be stored at once.
      */
-    sizeRead = read(SLAVE_OUT[slaveNum], result, STRINGSIZE-1);
+    sizeRead = read(SLAVE_OUT[slaveNum], result, STRINGSIZE - 1);
     if (sizeRead == -1)
         errorHandler("read from slave pipe");
     (*filesReceived)++;
@@ -97,7 +97,7 @@ void readAndSendFileToSlave(int *pathIterator, int *filesReceived, int *filesSen
 
     shmwrite(result);
 
-    while (ret && *pathIterator < globbuf.gl_pathc){
+    while (ret && *pathIterator < globbuf.gl_pathc) {
         ret = sendFileToSlave(globbuf.gl_pathv[*pathIterator], slaveNum);
         (*pathIterator)++;
         if (ret)
@@ -105,14 +105,15 @@ void readAndSendFileToSlave(int *pathIterator, int *filesReceived, int *filesSen
     }
 }
 
-void manageSlaves(int resultFd){
+void manageSlaves(int resultFd) {
     unsigned int slaveIterator = 0;
     int pathIterator, filesSent = 0, filesReceived = 0;
 
     // Send initial files for slaves
-    for (pathIterator = 0; pathIterator < globbuf.gl_pathc && pathIterator < SLAVELIMIT * INITIALFILESCOUNT; ++pathIterator) {
+    for (pathIterator = 0;
+         pathIterator < globbuf.gl_pathc && pathIterator < SLAVELIMIT * INITIALFILESCOUNT; ++pathIterator) {
         int ret = 1;
-        while (ret && pathIterator < globbuf.gl_pathc){
+        while (ret && pathIterator < globbuf.gl_pathc) {
             ret = sendFileToSlave(globbuf.gl_pathv[pathIterator], slaveIterator);
             pathIterator++;
         }
@@ -121,7 +122,7 @@ void manageSlaves(int resultFd){
 
     fd_set fdSet;
     int nfds = getMaxFd(SLAVE_OUT) + 1;
-    while (globbuf.gl_pathc > pathIterator || (globbuf.gl_pathc == pathIterator && filesReceived < filesSent)){
+    while (globbuf.gl_pathc > pathIterator || (globbuf.gl_pathc == pathIterator && filesReceived < filesSent)) {
         FD_ZERO(&fdSet);
         setFd(&fdSet, SLAVE_OUT);
 
@@ -130,34 +131,34 @@ void manageSlaves(int resultFd){
             errorHandler("select");
 
         for (int i = 0; i < SLAVELIMIT; ++i) {
-            if (FD_ISSET(SLAVE_OUT[i], &fdSet)){
+            if (FD_ISSET(SLAVE_OUT[i], &fdSet)) {
                 readAndSendFileToSlave(&pathIterator, &filesReceived, &filesSent, i, resultFd);
             }
         }
     }
 }
 
-void deleteShmOnExit(){
+void deleteShmOnExit() {
     if (writerDelete())
         perror("writer delete");
 }
 
-void deleteGlobbufOnExit(){
+void deleteGlobbufOnExit() {
     globfree(&globbuf);
 }
 
-int main(int argc, char * argv[]){
+int main(int argc, char *argv[]) {
 
-    if (argc < 2){         //  Check if path is an argument.
+    if (argc < 2) {         //  Check if path is an argument.
         fprintf(stderr, "Usage: %s [FILE]\n", argv[0]);
         exit(EXIT_FAILURE);
     }
 
-    getFilePaths(argc-1, &(argv[1]));
+    getFilePaths(argc - 1, &(argv[1]));
 
     //  Create the results file
     errno = 0;
-    int result_fd = open(RESULTPATH,O_CREAT|O_RDONLY|O_TRUNC, S_IWUSR|S_IRUSR);
+    int result_fd = open(RESULTPATH, O_CREAT | O_RDONLY | O_TRUNC, S_IWUSR | S_IRUSR);
     if (result_fd == -1)
         errorHandler("Open results");
 
@@ -176,7 +177,7 @@ int main(int argc, char * argv[]){
     exit(EXIT_SUCCESS);
 }
 
-void getFilePaths(int amount, char * paths[]){
+void getFilePaths(int amount, char *paths[]) {
     for (int i = 1; i < amount; ++i) {
         errno = 0;
         int ans;
@@ -185,7 +186,7 @@ void getFilePaths(int amount, char * paths[]){
             atexit(deleteGlobbufOnExit);
         } else
             ans = glob(paths[i], GLOB_NOSORT, NULL, &globbuf);
-        if (ans && ans != GLOB_NOMATCH){
+        if (ans && ans != GLOB_NOMATCH) {
             errorHandler("glob");
         }
     }
@@ -193,13 +194,13 @@ void getFilePaths(int amount, char * paths[]){
         exit(EXIT_SUCCESS);
 }
 
-void createSlavePipes(int fd[2]){
+void createSlavePipes(int fd[2]) {
     errno = 0;
     if (pipe(fd))
         errorHandler("pipe");
 }
 
-void executeSlave(int master_to_slave[2], int slave_to_master[2]){
+void executeSlave(int master_to_slave[2], int slave_to_master[2]) {
     close(master_to_slave[1]);
     close(slave_to_master[0]);
 
@@ -208,12 +209,12 @@ void executeSlave(int master_to_slave[2], int slave_to_master[2]){
     // dup2 also closes the original 0 and 1 file descriptors.
 
     errno = 0;
-    if (execl(SLAVEPATH, SLAVEPATH, NULL)){ //  Execute the slave program.
+    if (execl(SLAVEPATH, SLAVEPATH, NULL)) { //  Execute the slave program.
         errorHandler("execl");
     }
 }
 
-void createSlaves(){
+void createSlaves() {
     int master_to_slave[2];
     int slave_to_master[2];
 
@@ -226,9 +227,9 @@ void createSlaves(){
         SLAVE_OUT[i] = slave_to_master[0];  //  Read end of the pipe is saved by the master.
         errno = 0;
         int pid = fork();
-        if ( pid == 0 ) //  Child process modifies it's file descriptors and executes ./slave.
+        if (pid == 0) //  Child process modifies it's file descriptors and executes ./slave.
             executeSlave(master_to_slave, slave_to_master);
-        if ( pid == -1)
+        if (pid == -1)
             errorHandler("fork");
 
         //  Close fd meant for the slave.
@@ -238,14 +239,14 @@ void createSlaves(){
 
 }
 
-void startShm(){
+void startShm() {
     char shmName[STRINGSIZE];
     snprintf(shmName, STRINGSIZE, "/aplicacion-%d", getpid());
     createShm(shmName);
     puts(shmName);
 }
 
-void errorHandler(const char * msg){
+void errorHandler(const char *msg) {
     perror(msg);
     exit(EXIT_FAILURE);
 }
