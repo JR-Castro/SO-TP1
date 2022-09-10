@@ -16,23 +16,34 @@ cargando el mismo. El buffer DEBE tener la siguiente información:
 
 int main(int argc, char const *argv[]){
 
-    size_t mem;
+    int shmSize;
+    char buffer[MAX_MEM_CHARS] = {0};
     
     if( argc == 1 ){
-        char buffer[MAX_MEM_CHARS] = {0};
         if(read(STDIN, buffer, MAX_MEM_CHARS) == ERROR ) {
+            //puedo usar scanf con barra
             errorHandler("Read failed");
         }
-        mem = atoi(buffer);
-    } else if( argc == 2 ) {
-        mem = atoi(argv[1]);
+        shmSize = atoi(argv[1])
+    } else if (argc == 2){
+        shmSize =  atoi(argv[1]);
     } else {
         fprintf(stderr,"%s\n","Incorrect amount of arguments");
+        return -1;
     }
+ 
+    int connect = connecshr(buffer)
+    int count = 0;
 
-    //crear una estructura para las vistas?
-    //crar metodo para abrir y cerrar las vistas
-    //
+    if(connect != SHMADT_ERROR){
+        while(count < shmSize){
+            printf("%s \n",shmread())
+        }
+    }
+    else
+        return SHMADT_ERROR;
+
+    readerDisconnect(); 
 
     return 0;
 }
