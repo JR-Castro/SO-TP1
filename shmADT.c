@@ -59,6 +59,8 @@ int readerDisconnect() {
 }
 
 int writerDelete() {
+    if (shmwrite(ENDSTRING) == -1)
+        return SHMADT_ERROR;
     if (munmap((void *) shmem, STRINGAMOUNT * STRINGSIZE))
         return SHMADT_ERROR;
     if (shm_unlink(shmemName))
@@ -84,6 +86,10 @@ char *shmread() {
         if (sem_wait(semaphore))
             return (char*)-1;
         char * ans = &(shmem[iterator * STRINGSIZE]);
+        if (strcmp(ans, ENDSTRING) == 0){
+            iterator = STRINGAMOUNT;
+            return NULL;
+        }
         iterator++;
         return ans;
     }

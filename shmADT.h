@@ -18,9 +18,10 @@
 #include <semaphore.h>
 #include <string.h>
 
-#define SHMADT_ERROR -1
+#define SHMADT_ERROR (-1)
 #define STRINGSIZE 256
 #define STRINGAMOUNT 2048
+#define ENDSTRING "ZZZZZZ"
 
 // Link with -lrt for shmem
 // Link with -pthread for semaphore
