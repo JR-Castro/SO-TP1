@@ -1,9 +1,14 @@
 // This is a personal academic project. Dear PVS-Studio, please check it.
-// PVS-Studio Static Code Analyzer for C, C++, C#, and Java: http://www.viva64.com
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
+
 //MUST to recieve the paths of the files to process y it MUST initiate the program corresponding for processing them (md5sum)
 //MUST send the information relevant to processing to the process aplication
 //MUSTN'T dump the result in a file in disc, to then read it from the slave, it MUST recieve the output of md5sum utilizing
 //some mechanism of IPC more sophisticated
+
+#ifndef _POSIX_C_SOURCE
+#define _POSIX_C_SOURCE 2
+#endif
 
 #include <sys/types.h>
 #include <sys/select.h>
@@ -12,39 +17,45 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <glob.h>
 #include <errno.h>
-#include <string.h> 
+#include <string.h>
 
+#define SIZE 1024
+#define HASHSIZE 33
+#define SCANFFORMAT "%32s %1023s"
 
-int main(void)
-{
-    char* path;
-    char* msg;
-    char* alphanumber;
-    char* filename;
-    char* final;
-    ssize_t rvalue;
-    int filesize;
+void errorHandler(char *msg) {
+    perror(msg);
+    exit(EXIT_FAILURE);
+}
 
-  do {
-    rvalue = read(stdin,path,BUFSIZ);
-    FILE* file = popen(strcat("md5sum ", path), "r");
-    if(file == NULL)
-        perror("Error in popen.");
-    
-    fgets(msg, 1024, file);
-    alphanumber = strtok(msg, "  ");
-    filename = strtok(NULL, "  ");
+int main(void) {
+    char command[SIZE];
+    char buffer[SIZE];
+    char path[SIZE];
+    char hash[HASHSIZE];
 
-    final = strcat(alphanumber, " - ");
-    final = strcat(final, filename);
+    ssize_t rvalue = read(STDIN_FILENO, buffer, SIZE);
+    while (rvalue > 0){
+        strcpy(command, "md5sum ");
+        strncat(command, buffer, rvalue);
 
-    pclose(file);
-    if(write(stdout, final, strlen(final) + 1) < 0)
-        perror("Error on write.");
+        FILE *file = popen(command, "r");
+        if (file == NULL)
+            errorHandler("popen");
 
-  } while (rvalue > 0);
-  
-  return rvalue;
+        fscanf(file, SCANFFORMAT, hash, path);
+        snprintf(buffer, SIZE, "%d - %s - %s", getpid(), path, hash);
+
+        if (pclose(file) == -1)
+            errorHandler("pclose");
+
+        if (write(STDOUT_FILENO, buffer, strlen(buffer)) == -1)
+            errorHandler("write");
+
+        rvalue = read(STDIN_FILENO, buffer, SIZE);
+    }
+    if (rvalue == -1)
+        errorHandler("read");
+    exit(EXIT_SUCCESS);
 }
