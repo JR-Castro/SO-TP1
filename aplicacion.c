@@ -23,10 +23,10 @@
 #define INITIALFILESCOUNT 1
 
 int SLAVE_IN[SLAVELIMIT];   //  fd for slave inputs -> where the paths are sent to be processed by the slaves
-
 int SLAVE_OUT[SLAVELIMIT];  //  fd for slave outputs -> where the slaves response is sent.
+glob_t globbuf;             // Structure for glob function (match paths)
 
-void getFilePaths(int amount, char * paths[], glob_t * globbuf);
+void getFilePaths(int amount, char * paths[]);
 
 void createSlavePipes(int fd[2]);
 
@@ -75,7 +75,7 @@ void setFd(fd_set *fdSet, int fds[SLAVELIMIT]){
 }
 
 //  Reads a slave's output and prints it to the results file and sends to the shared memory
-void readAndSendFileToSlave(int *pathIterator, int *filesReceived, int *filesSent, int slaveNum, int resultFd, glob_t *globbuf){
+void readAndSendFileToSlave(int *pathIterator, int *filesReceived, int *filesSent, int slaveNum, int resultFd){
     char result[STRINGSIZE];
     long sizeRead;
     int ret = 1;
@@ -97,23 +97,23 @@ void readAndSendFileToSlave(int *pathIterator, int *filesReceived, int *filesSen
 
     shmwrite(result);
 
-    while (ret && *pathIterator < globbuf->gl_pathc){
-        ret = sendFileToSlave(globbuf->gl_pathv[*pathIterator], slaveNum);
+    while (ret && *pathIterator < globbuf.gl_pathc){
+        ret = sendFileToSlave(globbuf.gl_pathv[*pathIterator], slaveNum);
         (*pathIterator)++;
         if (ret)
             (*filesSent)++;
     }
 }
 
-void manageSlaves(glob_t * globbuf, int resultFd){
+void manageSlaves(int resultFd){
     unsigned int slaveIterator = 0;
     int pathIterator, filesSent = 0, filesReceived = 0;
 
     // Send initial files for slaves
-    for (pathIterator = 0; pathIterator < globbuf->gl_pathc && pathIterator < SLAVELIMIT * INITIALFILESCOUNT; ++pathIterator) {
+    for (pathIterator = 0; pathIterator < globbuf.gl_pathc && pathIterator < SLAVELIMIT * INITIALFILESCOUNT; ++pathIterator) {
         int ret = 1;
-        while (ret && pathIterator < globbuf->gl_pathc){
-            ret = sendFileToSlave(globbuf->gl_pathv[pathIterator], slaveIterator);
+        while (ret && pathIterator < globbuf.gl_pathc){
+            ret = sendFileToSlave(globbuf.gl_pathv[pathIterator], slaveIterator);
             pathIterator++;
         }
         slaveIterator = (slaveIterator + 1) % SLAVELIMIT;
@@ -121,7 +121,7 @@ void manageSlaves(glob_t * globbuf, int resultFd){
 
     fd_set fdSet;
     int nfds = getMaxFd(SLAVE_OUT) + 1;
-    while (globbuf->gl_pathc > pathIterator || (globbuf->gl_pathc == pathIterator && filesReceived < filesSent)){
+    while (globbuf.gl_pathc > pathIterator || (globbuf.gl_pathc == pathIterator && filesReceived < filesSent)){
         FD_ZERO(&fdSet);
         setFd(&fdSet, SLAVE_OUT);
 
@@ -131,10 +131,19 @@ void manageSlaves(glob_t * globbuf, int resultFd){
 
         for (int i = 0; i < SLAVELIMIT; ++i) {
             if (FD_ISSET(SLAVE_OUT[i], &fdSet)){
-                readAndSendFileToSlave(&pathIterator, &filesReceived, &filesSent, i, resultFd, globbuf);
+                readAndSendFileToSlave(&pathIterator, &filesReceived, &filesSent, i, resultFd);
             }
         }
     }
+}
+
+void deleteShmOnExit(){
+    if (writerDelete())
+        perror("writer delete");
+}
+
+void deleteGlobbufOnExit(){
+    globfree(&globbuf);
 }
 
 int main(int argc, char * argv[]){
@@ -144,8 +153,7 @@ int main(int argc, char * argv[]){
         exit(EXIT_FAILURE);
     }
 
-    glob_t globbuf;
-    getFilePaths(argc-1, &(argv[1]), &globbuf);
+    getFilePaths(argc-1, &(argv[1]));
 
     //  Create the results file
     errno = 0;
@@ -154,37 +162,34 @@ int main(int argc, char * argv[]){
         errorHandler("Open results");
 
     startShm();
+    //  Delete shared memory even on error to avoid leaks
+    atexit(deleteShmOnExit);
+
 
     sleep(2);
 
     //  Create slaves and set fd.
     createSlaves();
 
-    manageSlaves(&globbuf, result_fd);
+    manageSlaves(result_fd);
 
-    //  Once all files are processed, close the pipes to signal EOF.
-    errno = 0;
-    for (int i = 0; i < SLAVELIMIT; ++i) {
-        if (close(SLAVE_IN[i]))
-            errorHandler("Close pipes");
-    }
-
-    if (writerDelete())
-        errorHandler(NULL);
-
-    globfree(&globbuf);
     exit(EXIT_SUCCESS);
 }
 
-void getFilePaths(int amount, char * paths[], glob_t * globbuf){
+void getFilePaths(int amount, char * paths[]){
     for (int i = 1; i < amount; ++i) {
         errno = 0;
-        int ans = glob(paths[i], GLOB_NOSORT | ( i > 1 ? GLOB_APPEND : 0), NULL, globbuf);
+        int ans;
+        if (i == 1) {
+            ans = glob(paths[i], GLOB_NOSORT | GLOB_APPEND, NULL, &globbuf);
+            atexit(deleteGlobbufOnExit);
+        } else
+            ans = glob(paths[i], GLOB_NOSORT, NULL, &globbuf);
         if (ans && ans != GLOB_NOMATCH){
             errorHandler("glob");
         }
     }
-    if (globbuf->gl_pathc == 0)
+    if (globbuf.gl_pathc == 0)
         exit(EXIT_SUCCESS);
 }
 
