@@ -7,7 +7,6 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <glob.h>
 #include <errno.h>
 #include <string.h>
 
@@ -15,7 +14,7 @@
 
 #define SLAVELIMIT 5
 //  Path to the slaves binary
-#define SLAVEPATH "./slave"
+#define SLAVEPATH "./esclavo"
 //  Path to the results file
 #define RESULTPATH "./resultado"
 //  Amount of files sent initially to each slave
@@ -24,7 +23,8 @@
 
 int SLAVE_IN[SLAVELIMIT];   //  fd for slave inputs -> where the paths are sent to be processed by the slaves
 int SLAVE_OUT[SLAVELIMIT];  //  fd for slave outputs -> where the slaves response is sent.
-glob_t globbuf;             // Structure for glob function (match paths)
+char **paths;
+int pathc;
 
 void getFilePaths(int amount, char *paths[]);
 
@@ -89,16 +89,18 @@ void readAndSendFileToSlave(int *pathIterator, int *filesReceived, int *filesSen
     (*filesReceived)++;
 
     // End the string.
-    if (sizeRead >= 0)
+    if (sizeRead >= 0) {
+        result[sizeRead++] = '\n';
         result[sizeRead] = '\0';
+    }
 
-    if (write(resultFd, result, strlen(result)))
+    if (write(resultFd, result, strlen(result)) == -1)
         errorHandler("write to results file");
 
     shmwrite(result);
 
-    while (ret && *pathIterator < globbuf.gl_pathc) {
-        ret = sendFileToSlave(globbuf.gl_pathv[*pathIterator], slaveNum);
+    while (ret && *pathIterator < pathc) {
+        ret = sendFileToSlave(paths[*pathIterator], slaveNum);
         (*pathIterator)++;
         if (ret)
             (*filesSent)++;
@@ -111,18 +113,19 @@ void manageSlaves(int resultFd) {
 
     // Send initial files for slaves
     for (pathIterator = 0;
-         pathIterator < globbuf.gl_pathc && pathIterator < SLAVELIMIT * INITIALFILESCOUNT; ++pathIterator) {
+         pathIterator < pathc && pathIterator < SLAVELIMIT * INITIALFILESCOUNT; ++pathIterator) {
         int ret = 1;
-        while (ret && pathIterator < globbuf.gl_pathc) {
-            ret = sendFileToSlave(globbuf.gl_pathv[pathIterator], slaveIterator);
+        while (ret && pathIterator < pathc) {
+            ret = sendFileToSlave(paths[pathIterator], slaveIterator);
             pathIterator++;
         }
         slaveIterator = (slaveIterator + 1) % SLAVELIMIT;
+        filesSent++;
     }
 
     fd_set fdSet;
     int nfds = getMaxFd(SLAVE_OUT) + 1;
-    while (globbuf.gl_pathc > pathIterator || (globbuf.gl_pathc == pathIterator && filesReceived < filesSent)) {
+    while (pathc > pathIterator || (pathc < pathIterator && filesReceived < filesSent)) {
         FD_ZERO(&fdSet);
         setFd(&fdSet, SLAVE_OUT);
 
@@ -143,10 +146,6 @@ void deleteShmOnExit() {
         perror("writer delete");
 }
 
-void deleteGlobbufOnExit() {
-    globfree(&globbuf);
-}
-
 int main(int argc, char *argv[]) {
 
     if (argc < 2) {         //  Check if path is an argument.
@@ -154,11 +153,12 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    getFilePaths(argc - 1, &(argv[1]));
+    paths = &(argv[1]);
+    pathc = argc-1;
 
     //  Create the results file
     errno = 0;
-    int result_fd = open(RESULTPATH, O_CREAT | O_RDONLY | O_TRUNC, S_IWUSR | S_IRUSR);
+    int result_fd = open(RESULTPATH, O_CREAT | O_RDWR | O_TRUNC, S_IWUSR | S_IRUSR);
     if (result_fd == -1)
         errorHandler("Open results");
 
@@ -175,23 +175,6 @@ int main(int argc, char *argv[]) {
     manageSlaves(result_fd);
 
     exit(EXIT_SUCCESS);
-}
-
-void getFilePaths(int amount, char *paths[]) {
-    for (int i = 1; i < amount; ++i) {
-        errno = 0;
-        int ans;
-        if (i == 1) {
-            ans = glob(paths[i], GLOB_NOSORT | GLOB_APPEND, NULL, &globbuf);
-            atexit(deleteGlobbufOnExit);
-        } else
-            ans = glob(paths[i], GLOB_NOSORT, NULL, &globbuf);
-        if (ans && ans != GLOB_NOMATCH) {
-            errorHandler("glob");
-        }
-    }
-    if (globbuf.gl_pathc == 0)
-        exit(EXIT_SUCCESS);
 }
 
 void createSlavePipes(int fd[2]) {

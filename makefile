@@ -10,7 +10,7 @@ vista: vista.c
 	${CC} ${FLAGS} vista.c shmADT.c -o vista -lrt -pthread
 
 slave: esclavo.c
-	${CC} ${FLAGS} esclavo.c -o slave
+	${CC} ${FLAGS} esclavo.c -o esclavo
 
 clean:
-	rm md5 vista slave
+	rm md5 vista esclavo
