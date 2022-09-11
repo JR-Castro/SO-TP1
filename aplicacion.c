@@ -102,42 +102,47 @@ void readAndSendFileToSlave(int *pathIterator, int *filesReceived, int *filesSen
     while (ret && *pathIterator < pathc) {
         ret = sendFileToSlave(paths[*pathIterator], slaveNum);
         (*pathIterator)++;
-        if (ret)
-            (*filesSent)++;
     }
+    if (ret == 0)
+        (*filesSent)++;
 }
 
 void manageSlaves(int resultFd) {
     unsigned int slaveIterator = 0;
-    int pathIterator, filesSent = 0, filesReceived = 0;
+    int pathIterator = 0, filesSent = 0, filesReceived = 0;
 
     // Send initial files for slaves
-    for (pathIterator = 0;
-         pathIterator < pathc && pathIterator < SLAVELIMIT * INITIALFILESCOUNT; ++pathIterator) {
+    while (filesSent < SLAVELIMIT * INITIALFILESCOUNT && pathIterator < pathc){
         int ret = 1;
         while (ret && pathIterator < pathc) {
             ret = sendFileToSlave(paths[pathIterator], slaveIterator);
             pathIterator++;
         }
+        if (ret == 0)
+            filesSent++;
         slaveIterator = (slaveIterator + 1) % SLAVELIMIT;
-        filesSent++;
     }
 
     fd_set fdSet;
     int nfds = getMaxFd(SLAVE_OUT) + 1;
-    while (pathc > pathIterator || (pathc < pathIterator && filesReceived < filesSent)) {
+    int numToRead, numRead;
+    while (pathc > pathIterator || (pathc <= pathIterator && filesReceived < filesSent)) {
         FD_ZERO(&fdSet);
         setFd(&fdSet, SLAVE_OUT);
 
-        int numToRead = select(nfds, &fdSet, NULL, NULL, NULL);
+        numRead = 0;
+        numToRead = select(nfds, &fdSet, NULL, NULL, NULL);
         if (numToRead == -1)
             errorHandler("select");
 
         for (int i = 0; i < SLAVELIMIT; ++i) {
             if (FD_ISSET(SLAVE_OUT[i], &fdSet)) {
                 readAndSendFileToSlave(&pathIterator, &filesReceived, &filesSent, i, resultFd);
+                numRead++;
             }
         }
+        if (numRead != numToRead)
+            errorHandler("numRead != numToRead");
     }
 }
 
