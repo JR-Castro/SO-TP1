@@ -55,15 +55,15 @@ int shmwrite(const char s[STRINGSIZE]);
 char *shmread();
 
 /*
- * Reader disconnects from the shared memory
+ * Reader deletes the shared memory
  * Returns 0 on success, -1 on error and errno is set
  */
-int readerDisconnect();
+int readerDelete();
 
 /*
- * The writer process deletes the shared memory
+ * The writer disconnects from the shared memory
  * Returns 0 on success, -1 on error and errno is set
  */
-int writerDelete();
+int writerDisconnect();
 
 #endif //SO_TP1_SHMADT_H

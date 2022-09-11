@@ -7,7 +7,7 @@
 void errorHandler(const char *errorMsg);
 
 void disconnectShmOnExit() {
-    if (readerDisconnect())
+    if (readerDelete())
         perror("disconnectShmOnExit");
 }
 
@@ -16,8 +16,10 @@ int main(int argc, char const *argv[]) {
     char shmName[STRINGSIZE] = {0};
 
     if (argc == 1) {
-        if (fgets(shmName, STRINGSIZE, stdin) == NULL)
+        ssize_t length = read(STDIN_FILENO, shmName, STRINGSIZE - 1);
+        if (length <= 1)
             errorHandler("fgets");
+        shmName[length-1] = '\0';
     } else {
         strncpy(shmName, argv[1], STRINGSIZE);
     }
