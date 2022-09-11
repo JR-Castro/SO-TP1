@@ -89,7 +89,7 @@ void readAndSendFileToSlave(int *pathIterator, int *filesReceived, int *filesSen
     (*filesReceived)++;
 
     // End the string.
-    if (sizeRead >= 0) {
+    if (sizeRead >= 0 && sizeRead <= STRINGSIZE - 2) {
         result[sizeRead++] = '\n';
         result[sizeRead] = '\0';
     }
@@ -154,7 +154,7 @@ int main(int argc, char *argv[]) {
     }
 
     paths = &(argv[1]);
-    pathc = argc-1;
+    pathc = argc - 1;
 
     //  Create the results file
     errno = 0;

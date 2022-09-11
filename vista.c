@@ -16,10 +16,15 @@ int main(int argc, char const *argv[]) {
     char shmName[STRINGSIZE] = {0};
 
     if (argc == 1) {
-        ssize_t length = read(STDIN_FILENO, shmName, STRINGSIZE - 1);
-        if (length <= 1)
+        ssize_t length = read(STDIN_FILENO, shmName, STRINGSIZE);
+        if (length < 1)
             errorHandler("fgets");
-        shmName[length-1] = '\0';
+        char *newline = strchr(shmName, '\n');
+        if (newline != NULL)
+            *newline = '\0';
+        else
+            shmName[length - 1] = '\0';
+        // We check above that length is >= 1
     } else {
         strncpy(shmName, argv[1], STRINGSIZE);
     }

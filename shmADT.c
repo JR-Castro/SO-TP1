@@ -59,7 +59,8 @@ int readerDelete() {
         return SHMADT_ERROR;
     char semname[STRINGSIZE];
     getSemaphoreName(semname);
-    return sem_unlink(semname);}
+    return sem_unlink(semname);
+}
 
 int writerDisconnect() {
     if (shmwrite(ENDSTRING) == -1)
@@ -81,9 +82,9 @@ int shmwrite(const char s[STRINGSIZE]) {
 char *shmread() {
     if (iterator < STRINGAMOUNT) {
         if (sem_wait(semaphore))
-            return (char*)-1;
-        char * ans = &(shmem[iterator * STRINGSIZE]);
-        if (strcmp(ans, ENDSTRING) == 0){
+            return (char *) -1;
+        char *ans = &(shmem[iterator * STRINGSIZE]);
+        if (strcmp(ans, ENDSTRING) == 0) {
             iterator = STRINGAMOUNT;
             return NULL;
         }
