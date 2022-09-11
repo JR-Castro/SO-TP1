@@ -1,7 +1,7 @@
 CC = gcc
-FLAGS = -Wall -std=c99 -g
+FLAGS = -Wall -std=c99
 
-all: md5 vista slave
+all: md5 vista esclavo
 
 md5: aplicacion.c shmADT.c
 	${CC} ${FLAGS} aplicacion.c shmADT.c -o md5 -lrt -pthread
@@ -9,7 +9,7 @@ md5: aplicacion.c shmADT.c
 vista: vista.c shmADT.c
 	${CC} ${FLAGS} vista.c shmADT.c -o vista -lrt -pthread
 
-slave: esclavo.c
+esclavo: esclavo.c
 	${CC} ${FLAGS} esclavo.c -o esclavo
 
 clean:
