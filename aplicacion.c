@@ -7,7 +7,6 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <errno.h>
 #include <string.h>
 
 #include "shmADT.h"
@@ -44,13 +43,11 @@ void errorHandler(const char *msg);
  */
 int sendFileToSlave(const char *path, unsigned int slavenum) {
     struct stat statbuffer;
-    errno = 0;
     if (stat(path, &statbuffer) == -1)
         errorHandler("stat");
 
     if (S_ISREG(statbuffer.st_mode)) {
         //  Only check for errors, since when writing to a pipe, write blocks until there's enough space.
-        errno = 0;
         if (write(SLAVE_IN[slavenum], path, strlen(path)) == -1)
             errorHandler("write to pipe");
         return 0;   // Write completed correctly.
@@ -162,7 +159,6 @@ int main(int argc, char *argv[]) {
     pathc = argc - 1;
 
     //  Create the results file
-    errno = 0;
     int result_fd = open(RESULTPATH, O_CREAT | O_RDWR | O_TRUNC, S_IWUSR | S_IRUSR);
     if (result_fd == -1)
         errorHandler("Open results");
@@ -183,7 +179,6 @@ int main(int argc, char *argv[]) {
 }
 
 void createSlavePipes(int fd[2]) {
-    errno = 0;
     if (pipe(fd))
         errorHandler("pipe");
 }
@@ -196,7 +191,6 @@ void executeSlave(int master_to_slave[2], int slave_to_master[2]) {
     dup2(slave_to_master[1], 1);    //  Change stdout for pipe to master.
     // dup2 also closes the original 0 and 1 file descriptors.
 
-    errno = 0;
     if (execl(SLAVEPATH, SLAVEPATH, NULL)) { //  Execute the slave program.
         errorHandler("execl");
     }
@@ -213,7 +207,7 @@ void createSlaves() {
 
         SLAVE_IN[i] = master_to_slave[1];   //  Write end of the pipe is saved by the master.
         SLAVE_OUT[i] = slave_to_master[0];  //  Read end of the pipe is saved by the master.
-        errno = 0;
+
         int pid = fork();
         if (pid == 0) //  Child process modifies it's file descriptors and executes ./slave.
             executeSlave(master_to_slave, slave_to_master);
@@ -232,6 +226,8 @@ void startShm() {
     snprintf(shmName, STRINGSIZE, "/aplicacion-%d", getpid());
     createShm(shmName);
     puts(shmName);
+    if (fflush(stdout))
+        errorHandler("fflush");
 }
 
 void errorHandler(const char *msg) {

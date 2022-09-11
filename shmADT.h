@@ -55,13 +55,13 @@ int shmwrite(const char s[STRINGSIZE]);
 char *shmread();
 
 /*
- * Reader deletes the shared memory
+ * Reader disconnects from the shared memory
  * Returns 0 on success, -1 on error and errno is set
  */
 int readerClose();
 
 /*
- * The writer disconnects from the shared memory
+ * The writer disconnects and deletes the shared memory
  * Returns 0 on success, -1 on error and errno is set
  */
 int writerClose();

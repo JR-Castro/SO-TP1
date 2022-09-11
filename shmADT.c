@@ -55,13 +55,7 @@ int readerClose() {
     if (munmap((void *) shmem, STRINGAMOUNT * STRINGSIZE)) {
         return SHMADT_ERROR;
     }
-    if (shm_unlink(shmemName))
-        return SHMADT_ERROR;
-    if (sem_close(semaphore))
-        return SHMADT_ERROR;
-    char semname[STRINGSIZE];
-    getSemaphoreName(semname);
-    return sem_unlink(semname);
+    return sem_close(semaphore);
 }
 
 int writerClose() {
@@ -69,7 +63,13 @@ int writerClose() {
         return SHMADT_ERROR;
     if (munmap((void *) shmem, STRINGAMOUNT * STRINGSIZE))
         return SHMADT_ERROR;
-    return sem_close(semaphore);
+    if (shm_unlink(shmemName))
+        return SHMADT_ERROR;
+    if (sem_close(semaphore))
+        return SHMADT_ERROR;
+    char semname[STRINGSIZE];
+    getSemaphoreName(semname);
+    return sem_unlink(semname);
 }
 
 int shmwrite(const char s[STRINGSIZE]) {

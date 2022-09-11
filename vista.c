@@ -13,6 +13,9 @@ void disconnectShmOnExit() {
 
 int main(int argc, char const *argv[]) {
 
+    if (setvbuf(stdout, NULL, _IONBF, 0))
+        errorHandler("setvbuf");
+
     char shmName[STRINGSIZE] = {0};
 
     if (argc == 1) {
