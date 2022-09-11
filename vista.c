@@ -7,7 +7,7 @@
 void errorHandler(const char *errorMsg);
 
 void disconnectShmOnExit() {
-    if (readerDelete())
+    if (readerClose())
         perror("disconnectShmOnExit");
 }
 

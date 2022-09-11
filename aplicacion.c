@@ -147,7 +147,7 @@ void manageSlaves(int resultFd) {
 }
 
 void deleteShmOnExit() {
-    if (writerDisconnect())
+    if (writerClose())
         perror("writer delete");
 }
 

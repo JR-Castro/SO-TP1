@@ -58,12 +58,12 @@ char *shmread();
  * Reader deletes the shared memory
  * Returns 0 on success, -1 on error and errno is set
  */
-int readerDelete();
+int readerClose();
 
 /*
  * The writer disconnects from the shared memory
  * Returns 0 on success, -1 on error and errno is set
  */
-int writerDisconnect();
+int writerClose();
 
 #endif //SO_TP1_SHMADT_H
