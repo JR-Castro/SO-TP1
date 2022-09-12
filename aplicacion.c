@@ -122,8 +122,8 @@ void manageSlaves(int resultFd) {
 
     fd_set fdSet;
     int nfds = getMaxFd(SLAVE_OUT) + 1;
-    int numToRead, numRead;
     while (filesReceived < filesSent) {
+        int numToRead, numRead;
         FD_ZERO(&fdSet);
         setFd(&fdSet, SLAVE_OUT);
 

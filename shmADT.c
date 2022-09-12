@@ -27,6 +27,7 @@ int createShm(const char name[STRINGSIZE]) {
 
     shmem = (char *) mapped;
     strncpy(shmemName, name, STRINGSIZE);
+    shmemName[STRINGSIZE - 1] = '\0';
 
     return openSemaphore();
 }
@@ -47,6 +48,7 @@ int connectShm(const char name[STRINGSIZE]) {
 
     shmem = (char *) mapped;
     strncpy(shmemName, name, STRINGSIZE);
+    shmemName[STRINGSIZE - 1] = '\0';
 
     return openSemaphore();
 }

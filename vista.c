@@ -30,6 +30,7 @@ int main(int argc, char const *argv[]) {
         // We check above that length is >= 1
     } else {
         strncpy(shmName, argv[1], STRINGSIZE);
+        shmName[STRINGSIZE - 1] = '\0';
     }
 
     if (connectShm(shmName)) {
