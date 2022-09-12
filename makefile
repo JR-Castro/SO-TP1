@@ -13,4 +13,4 @@ esclavo: esclavo.c
 	${CC} ${FLAGS} esclavo.c -o esclavo
 
 clean:
-	rm md5 vista esclavo
+	rm -f md5 vista esclavo

@@ -11,16 +11,13 @@
 #endif
 
 #include <sys/types.h>
-#include <sys/select.h>
-#include <sys/stat.h>
-#include <fcntl.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <errno.h>
+#include <libgen.h>
 #include <string.h>
 
-#define SIZE 1024
+#define BUFFERSIZE 1024
 #define HASHSIZE 33
 #define SCANFFORMAT "%32s %1023s"
 
@@ -30,12 +27,12 @@ void errorHandler(char *msg) {
 }
 
 int main(void) {
-    char command[SIZE];
-    char buffer[SIZE];
-    char path[SIZE];
+    char command[BUFFERSIZE];
+    char buffer[BUFFERSIZE];
+    char path[BUFFERSIZE];
     char hash[HASHSIZE];
 
-    ssize_t rvalue = read(STDIN_FILENO, buffer, SIZE);
+    ssize_t rvalue = read(STDIN_FILENO, buffer, BUFFERSIZE);
     while (rvalue > 0){
         strcpy(command, "md5sum ");
         strncat(command, buffer, rvalue);
@@ -45,7 +42,9 @@ int main(void) {
             errorHandler("popen");
 
         fscanf(file, SCANFFORMAT, hash, path);
-        snprintf(buffer, SIZE, "%d - %s - %s", getpid(), path, hash);
+        //  Basename returns the component following the final '/'
+        //  In this case, that means it's the filename
+        snprintf(buffer, BUFFERSIZE, "%d - %s - %s", getpid(), basename(path), hash);
 
         if (pclose(file) == -1)
             errorHandler("pclose");
@@ -53,7 +52,7 @@ int main(void) {
         if (write(STDOUT_FILENO, buffer, strlen(buffer)) == -1)
             errorHandler("write");
 
-        rvalue = read(STDIN_FILENO, buffer, SIZE);
+        rvalue = read(STDIN_FILENO, buffer, BUFFERSIZE);
     }
     if (rvalue == -1)
         errorHandler("read");
