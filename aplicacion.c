@@ -222,7 +222,7 @@ void createSlaves() {
         close(master_to_slave[0]);
         close(slave_to_master[1]);
     }
-
+    sleep(10);
 }
 
 void startShm() {
