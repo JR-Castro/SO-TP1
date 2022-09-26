@@ -209,12 +209,13 @@ void createSlaves() {
         SLAVE_OUT[i] = slave_to_master[0];  //  Read end of the pipe is saved by the master.
 
         int pid = fork();
-        if (pid == 0) //  Child process modifies it's file descriptors and executes ./slave.
+        if (pid == 0){ //  Child process modifies it's file descriptors and executes ./slave.
             for (int j = 0; j < i; j++){
-                close(SLAVE_IN[j]);
                 close(SLAVE_OUT[j]);
+                close(SLAVE_IN[j]);
             }
             executeSlave(master_to_slave, slave_to_master);
+        }
         if (pid == -1)
             errorHandler("fork");
 
