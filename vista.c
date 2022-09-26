@@ -1,53 +1,52 @@
 // This is a personal academic project. Dear PVS-Studio, please check it.
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
-#include "shmADT.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <string.h>
+
+#define STRINGSIZE 1024
 
 void errorHandler(const char *errorMsg);
-
-void disconnectShmOnExit() {
-    if (readerClose())
-        perror("disconnectShmOnExit");
-}
 
 int main(int argc, char const *argv[]) {
 
     if (setvbuf(stdout, NULL, _IONBF, 0))
         errorHandler("setvbuf");
 
-    char shmName[STRINGSIZE] = {0};
+    char fifoName[STRINGSIZE] = {0};
 
     if (argc == 1) {
-        ssize_t length = read(STDIN_FILENO, shmName, STRINGSIZE);
+        ssize_t length = read(STDIN_FILENO, fifoName, STRINGSIZE);
         if (length < 1)
             errorHandler("fgets");
-        char *newline = strchr(shmName, '\n');
+        char *newline = strchr(fifoName, '\n');
         if (newline != NULL)
             *newline = '\0';
         else
-            shmName[length - 1] = '\0';
+            fifoName[length - 1] = '\0';
         // We check above that length is >= 1
     } else {
-        strncpy(shmName, argv[1], STRINGSIZE);
-        shmName[STRINGSIZE - 1] = '\0';
+        strncpy(fifoName, argv[1], STRINGSIZE);
+        fifoName[STRINGSIZE - 1] = '\0';
     }
 
-    if (connectShm(shmName)) {
-        errorHandler("connectShm");
-    }
-    if (atexit(disconnectShmOnExit))
-        errorHandler("at exit");
+    int fifofd = open(fifoName, O_RDONLY);
+    if (fifofd == -1)
+        errorHandler("open fifo");
 
-    char *result;
+    char buffer[STRINGSIZE];
+
+    ssize_t result;
     do {
-        result = shmread();
-        if (result == (char *) -1)
-            errorHandler("shmread");
-        if (result != NULL) {
-            puts(result);
-        }
-    } while (result != NULL);
+        result = read(fifofd, buffer, STRINGSIZE);
+        if (result == 0)
+            break;
+        write(STDOUT_FILENO, buffer, result);
+    } while (1);
 
     exit(EXIT_SUCCESS);
 }

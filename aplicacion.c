@@ -9,8 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "shmADT.h"
-
+#define STRINGSIZE 1024
 #define SLAVELIMIT 5
 //  Path to the slaves binary
 #define SLAVEPATH "./esclavo"
@@ -24,6 +23,7 @@ int SLAVE_IN[SLAVELIMIT];   //  fd for slave inputs -> where the paths are sent 
 int SLAVE_OUT[SLAVELIMIT];  //  fd for slave outputs -> where the slaves response is sent.
 char **paths;
 int pathc;
+int fifofd;
 
 void getFilePaths(int amount, char *paths[]);
 
@@ -32,8 +32,6 @@ void createSlavePipes(int fd[2]);
 void executeSlave(int master_to_slave[2], int slave_to_master[2]);
 
 void createSlaves();
-
-void startShm();
 
 void errorHandler(const char *msg);
 
@@ -94,7 +92,7 @@ void readAndSendFileToSlave(int *pathIterator, int *filesReceived, int *filesSen
     if (write(resultFd, result, strlen(result)) == -1)
         errorHandler("write to results file");
 
-    shmwrite(result);
+    write(fifofd, result, sizeRead);
 
     while (ret && *pathIterator < pathc) {
         ret = sendFileToSlave(paths[*pathIterator], slaveNum);
@@ -143,11 +141,6 @@ void manageSlaves(int resultFd) {
     }
 }
 
-void deleteShmOnExit() {
-    if (writerClose())
-        perror("writer delete");
-}
-
 int main(int argc, char *argv[]) {
 
     if (argc < 2) {         //  Check if path is an argument.
@@ -163,10 +156,17 @@ int main(int argc, char *argv[]) {
     if (result_fd == -1)
         errorHandler("Open results");
 
-    startShm();
-    //  Delete shared memory even on error to avoid leaks
-    atexit(deleteShmOnExit);
-
+    char * fifoName = "md5-fifoadadfdsa";
+    if (mkfifo(fifoName, 0777)){
+        errorHandler("mkfifo");
+    }
+    puts(fifoName);
+    if (fflush(stdout))
+        errorHandler("fflush");
+    fifofd = open(fifoName, O_WRONLY);
+    if (fifofd == -1){
+        errorHandler("fifo open");
+    }
 
     sleep(2);
 
@@ -219,15 +219,6 @@ void createSlaves() {
         close(slave_to_master[1]);
     }
 
-}
-
-void startShm() {
-    char shmName[STRINGSIZE];
-    snprintf(shmName, STRINGSIZE, "/aplicacion-%d", getpid());
-    createShm(shmName);
-    puts(shmName);
-    if (fflush(stdout))
-        errorHandler("fflush");
 }
 
 void errorHandler(const char *msg) {

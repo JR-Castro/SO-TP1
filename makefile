@@ -1,13 +1,13 @@
 CC = gcc
-FLAGS = -Wall -std=c99
+FLAGS = -g -Wall -std=c99
 
 all: md5 vista esclavo
 
 md5: aplicacion.c shmADT.c
-	${CC} ${FLAGS} aplicacion.c shmADT.c -o md5 -lrt -pthread
+	${CC} ${FLAGS} aplicacion.c -o md5
 
 vista: vista.c shmADT.c
-	${CC} ${FLAGS} vista.c shmADT.c -o vista -lrt -pthread
+	${CC} ${FLAGS} vista.c -o vista
 
 esclavo: esclavo.c
 	${CC} ${FLAGS} esclavo.c -o esclavo
