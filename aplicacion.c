@@ -29,7 +29,7 @@ void getFilePaths(int amount, char *paths[]);
 
 void createSlavePipes(int fd[2]);
 
-void executeSlave(int master_to_slave[2], int slave_to_master[2]);
+void executeSlave(int master_to_slave[2], int slave_to_master[2], int i);
 
 void createSlaves();
 
@@ -183,13 +183,16 @@ void createSlavePipes(int fd[2]) {
         errorHandler("pipe");
 }
 
-void executeSlave(int master_to_slave[2], int slave_to_master[2]) {
+void executeSlave(int master_to_slave[2], int slave_to_master[2], int i) {
     close(master_to_slave[1]);
     close(slave_to_master[0]);
 
     dup2(master_to_slave[0], 0);    //  Change stdin for pipe from master.
     dup2(slave_to_master[1], 1);    //  Change stdout for pipe to master.
     // dup2 also closes the original 0 and 1 file descriptors.
+
+    close(5);
+    close(2*i+8);
 
     if (execl(SLAVEPATH, SLAVEPATH, NULL)) { //  Execute the slave program.
         errorHandler("execl");
@@ -214,7 +217,7 @@ void createSlaves() {
                 close(SLAVE_OUT[j]);
                 close(SLAVE_IN[j]);
             }
-            executeSlave(master_to_slave, slave_to_master);
+            executeSlave(master_to_slave, slave_to_master, i);
         }
         if (pid == -1)
             errorHandler("fork");
