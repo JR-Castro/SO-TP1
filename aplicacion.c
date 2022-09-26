@@ -210,6 +210,10 @@ void createSlaves() {
 
         int pid = fork();
         if (pid == 0) //  Child process modifies it's file descriptors and executes ./slave.
+            for (int j = 0; j < i; j++){
+                close(SLAVE_IN[j]);
+                close(SLAVE_OUT[j]);
+            }
             executeSlave(master_to_slave, slave_to_master);
         if (pid == -1)
             errorHandler("fork");
